@@ -66,7 +66,6 @@
     <script>
         const faces = ['R', 'L', 'U', 'D', 'F', 'B'];
         
-        // CHUYỂN ĐỔI SANG ĐƯỜNG DẪN NỘI BỘ: Đảm bảo đồng bộ dữ liệu trực tiếp trên GitHub
         const IMAGE_FILES = {
             'R': 'pic1.jpg',
             'L': 'pic2.jpg',
@@ -95,12 +94,17 @@
             });
         }
 
+        // ĐÃ FIX: Cập nhật chính xác ảnh nền gốc VÀ tọa độ cắt mảnh tương ứng với mặt hiện tại
         function renderCubeState() {
             faces.forEach(f => {
                 for (let row = 0; row < 3; row++) {
                     for (let col = 0; col < 3; col++) {
-                        const data = cubeState[f][row][col]; const pieceDiv = document.getElementById(`p-${f}-${row}-${col}`);
+                        const data = cubeState[f][row][col]; 
+                        const pieceDiv = document.getElementById(`p-${f}-${row}-${col}`);
+                        
+                        // Lấy ảnh gốc của mảnh này
                         pieceDiv.style.backgroundImage = `url('${IMAGE_FILES[data.origFace]}')`;
+                        // Tính toán lại vị trí cắt ảnh theo tọa độ hàng/cột gốc của chính nó
                         pieceDiv.style.backgroundPosition = `${data.origCol * 50}% ${data.origRow * 50}%`;
                     }
                 }
