@@ -3,29 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D RUBIK OF THE OLD COLLECTIVE QUARTERS - Absolute Fix</title>
+    <title>3D RUBIK OF THE OLD COLLECTIVE QUARTERS - Perfect 3D Logic</title>
     <style>
         body { margin: 0; background-color: #1a1a1a; font-family: Arial, sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; color: white; user-select: none; }
         #info { text-align: center; position: absolute; top: 10px; width: 100%; pointer-events: none; z-index: 10; }
         #info h2 { margin: 5px; color: #28a745; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
-        .container { perspective: 1200px; width: 300px; height: 300px; display: flex; align-items: center; justify-content: center; margin-bottom: 60px; cursor: move; touch-action: none; }
-        .rubik { width: 300px; height: 300px; position: relative; transform-style: preserve-3d; transform: rotateX(-25deg) rotateY(45deg); transition: transform 0.1s linear; }
-        .face { position: absolute; width: 300px; height: 300px; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); box-sizing: border-box; background: #000; border: 2px solid #000; backface-visibility: hidden; }
         
-        .face-F { transform: translateZ(150px); }
-        .face-B { transform: rotateY(180deg) translateZ(150px); }
-        .face-L { transform: rotateY(-90deg) translateZ(150px); }
-        .face-R { transform: rotateY(90deg) translateZ(150px); }
-        .face-U { transform: rotateX(90deg) translateZ(150px); }
-        .face-D { transform: rotateX(-90deg) translateZ(150px); }
+        .container { 
+            perspective: 1200px; 
+            width: 300px; 
+            height: 300px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            margin-bottom: 60px; 
+            cursor: move; 
+            touch-action: none; 
+        }
+        
+        /* Rubik size là 100x100 vì nó là tâm của khối, các cubie sẽ dịch ra xung quanh */
+        .rubik { 
+            width: 100px; 
+            height: 100px; 
+            position: relative; 
+            transform-style: preserve-3d; 
+            transform: rotateX(-25deg) rotateY(45deg); 
+        }
 
-        .piece { 
+        .cubie { 
+            position: absolute; 
+            width: 100px; 
+            height: 100px; 
+            transform-style: preserve-3d; 
+            transform-origin: 50% 50% 0; 
+        }
+        
+        .pivot { 
+            position: absolute; 
+            width: 100px; 
+            height: 100px; 
+            transform-style: preserve-3d; 
+            transform-origin: 50% 50% 0; 
+        }
+
+        .face { 
+            position: absolute; 
+            width: 100px; 
+            height: 100px; 
             box-sizing: border-box; 
-            border: 1px solid rgba(0,0,0,0.4); 
-            background-size: 300px 300px !important;
-            background-repeat: no-repeat !important;
-            width: 100px;
-            height: 100px;
+            border: 2px solid #000; 
+            background-size: 300px 300px; 
+            backface-visibility: hidden; 
+            background-color: #000;
+            border-radius: 4px; /* Bo góc nhẹ để giống Rubik thật */
         }
 
         #menu { position: absolute; bottom: 20px; background: rgba(0, 0, 0, 0.85); padding: 15px; border-radius: 15px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 100; border: 1px solid #444; }
@@ -39,156 +69,202 @@
 
     <div id="info">
         <h2>3D RUBIK'S MEMORIES</h2>
-        <p>Use the buttons to rotate and stitch our class photos back together</p>
+        <p>Use the buttons to rotate and piece the image back together.</p>
     </div>
 
     <div class="container" id="cubeContainer">
-        <div class="rubik" id="rubikCube">
-            <div class="face face-F" id="face-F"></div>
-            <div class="face face-B" id="face-B"></div>
-            <div class="face face-L" id="face-L"></div>
-            <div class="face face-R" id="face-R"></div>
-            <div class="face face-U" id="face-U"></div>
-            <div class="face face-D" id="face-D"></div>
-        </div>
+        <div class="rubik" id="rubikCube"></div>
     </div>
 
     <div id="menu">
-        <button onclick="rotateLayer('U', true)">U (UP)</button>
-        <button onclick="rotateLayer('R', true)">R (RIGHT)</button>
-        <button onclick="rotateLayer('F', true)">F (FRONT)</button>
-        <button onclick="rotateLayer('U', false)">U' (UP PRIME)</button>
-        <button onclick="rotateLayer('R', false)">R' (RIGHT PRIME)</button>
-        <button onclick="rotateLayer('F', false)">F' (FRONT PRIME)</button>
+        <button onclick="handleMove('U', true)">U (UP)</button>
+        <button onclick="handleMove('R', true)">R (RIGHT)</button>
+        <button onclick="handleMove('F', true)">F (FRONT)</button>
+        <button onclick="handleMove('U', false)">U' (UP PRIME)</button>
+        <button onclick="handleMove('R', false)">R' (RIGHT PRIME)</button>
+        <button onclick="handleMove('F', false)">F' (FRONT PRIME)</button>
         <button class="special" onclick="autoSolve()">AUTO (SOLVE)</button>
     </div>
 
     <script>
-        const faces = ['F', 'B', 'L', 'R', 'U', 'D'];
-        const IMAGE_FILES = {
-            'F': 'pic01.jpg', 'B': 'pic02.jpg',
-            'L': 'pic03.jpg', 'R': 'pic04.jpg',
-            'U': 'pic05.jpg', 'D': 'pic06.jpg'
+        // Cấu hình Hình Ảnh & Góc/Tọa độ background cho từng mặt chuẩn 3D
+        const bgMap = {
+            'F': { img: 'pic01.jpg', rx: 0, ry: 0, getBg: (x, y) => `${(x+1)*50}% ${(y+1)*50}%` },
+            'B': { img: 'pic02.jpg', rx: 0, ry: 180, getBg: (x, y) => `${(1-x)*50}% ${(y+1)*50}%` },
+            'L': { img: 'pic03.jpg', rx: 0, ry: -90, getBg: (z, y) => `${(z+1)*50}% ${(y+1)*50}%` },
+            'R': { img: 'pic04.jpg', rx: 0, ry: 90, getBg: (z, y) => `${(1-z)*50}% ${(y+1)*50}%` },
+            'U': { img: 'pic05.jpg', rx: 90, ry: 0, getBg: (x, z) => `${(x+1)*50}% ${(z+1)*50}%` },
+            'D': { img: 'pic06.jpg', rx: -90, ry: 0, getBg: (x, z) => `${(x+1)*50}% ${(1-z)*50}%` }
         };
 
-        let cubeState = {};
+        const rubik = document.getElementById('rubikCube');
+        let cubies = [];
         let moveHistory = [];
         let isRotating = false;
+        let isSolving = false;
+        let camX = 45, camY = -25; // Lưu trữ góc nhìn camera
+
+        function createFace(cubie, faceName, x, y, z) {
+            let face = document.createElement('div');
+            face.className = `face face-${faceName}`;
+            let info = bgMap[faceName];
+            face.style.backgroundImage = `url('${info.img}')`;
+            
+            // Xoay mặt ra phía ngoài khối vuông nhỏ
+            face.style.transform = `rotateX(${info.rx}deg) rotateY(${info.ry}deg) translateZ(50px)`;
+            
+            // Cắt đúng phần ảnh của mảnh này
+            let bgPos = '';
+            if(faceName === 'F' || faceName === 'B') bgPos = info.getBg(x, y);
+            else if(faceName === 'L' || faceName === 'R') bgPos = info.getBg(z, y);
+            else if(faceName === 'U' || faceName === 'D') bgPos = info.getBg(x, z);
+            face.style.backgroundPosition = bgPos;
+            
+            cubie.appendChild(face);
+        }
 
         function initCube() {
-            faces.forEach(f => {
-                cubeState[f] = [];
-                const faceEl = document.getElementById(`face-${f}`);
-                faceEl.innerHTML = '';
-                for (let r = 0; r < 3; r++) {
-                    cubeState[f][r] = [];
-                    for (let c = 0; c < 3; c++) {
-                        // Lưu trữ vị trí cắt ảnh thực tế (bgX, bgY) thay vì dùng hàm rotate của CSS
-                        cubeState[f][r][c] = { f: f, bgX: c * 50, bgY: r * 50 };
-                        let div = document.createElement('div');
-                        div.className = 'piece';
-                        div.id = `piece-${f}-${r}-${c}`;
-                        faceEl.appendChild(div);
-                    }
-                }
-            });
-            render();
-        }
+            rubik.innerHTML = '';
+            cubies = [];
+            for (let x = -1; x <= 1; x++) {
+                for (let y = -1; y <= 1; y++) {
+                    for (let z = -1; z <= 1; z++) {
+                        let cubie = document.createElement('div');
+                        cubie.className = 'cubie';
+                        
+                        // Chỉ tạo mặt ở phía ngoài cùng
+                        if (z === 1) createFace(cubie, 'F', x, y, z);
+                        if (z === -1) createFace(cubie, 'B', x, y, z);
+                        if (x === 1) createFace(cubie, 'R', x, y, z);
+                        if (x === -1) createFace(cubie, 'L', x, y, z);
+                        if (y === -1) createFace(cubie, 'U', x, y, z);
+                        if (y === 1) createFace(cubie, 'D', x, y, z);
 
-        function render() {
-            faces.forEach(f => {
-                for (let r = 0; r < 3; r++) {
-                    for (let c = 0; c < 3; c++) {
-                        const data = cubeState[f][r][c];
-                        const el = document.getElementById(`piece-${f}-${r}-${c}`);
-                        el.style.backgroundImage = `url('${IMAGE_FILES[data.f]}')`;
-                        el.style.backgroundPosition = `${data.bgX}% ${data.bgY}%`;
+                        // Base translation cho tọa độ khởi tạo
+                        let baseTranslate = `translate3d(${x*100}px, ${y*100}px, ${z*100}px)`;
+                        cubie.style.transform = baseTranslate;
+                        
+                        rubik.appendChild(cubie);
+                        cubies.push({ el: cubie, x, y, z, transformStr: '', baseTranslate });
                     }
-                }
-            });
-        }
-
-        function rotFace(arr, cw) {
-            let res = Array.from({length: 3}, () => []);
-            for(let r=0; r<3; r++) {
-                for(let c=0; c<3; c++) {
-                    if(cw) res[c][2-r] = arr[r][c];
-                    else res[2-c][r] = arr[r][c];
                 }
             }
-            return res;
         }
 
-        function rotateLayer(move, cw, isSolving = false) {
-            if (isRotating) return;
+        // TÍNH TOÁN: Tìm xem hiện tại mặt gốc nào đang hướng về Camera
+        function getRelativeFaces(rotX, rotY) {
+            const rx = rotX * Math.PI / 180;
+            const ry = rotY * Math.PI / 180;
+            const cosX = Math.cos(rx), sinX = Math.sin(rx);
+            const cosY = Math.cos(ry), sinY = Math.sin(ry);
+            
+            const faces = {
+                'F': {x: 0, y: 0, z: 1}, 'B': {x: 0, y: 0, z: -1},
+                'U': {x: 0, y: -1, z: 0}, 'D': {x: 0, y: 1, z: 0},
+                'R': {x: 1, y: 0, z: 0}, 'L': {x: -1, y: 0, z: 0}
+            };
+
+            let mapped = { U: '', R: '', F: '' };
+            let maxZ = -Infinity, maxY = -Infinity, maxX = -Infinity;
+
+            for (let f in faces) {
+                let v = faces[f];
+                let x1 = v.x * cosY + v.z * sinY;
+                let y1 = v.y;
+                let z1 = -v.x * sinY + v.z * cosY;
+                
+                let x2 = x1;
+                let y2 = y1 * cosX - z1 * sinX;
+                let z2 = y1 * sinX + z1 * cosX;
+                
+                if (z2 > maxZ) { maxZ = z2; mapped.F = f; } // Mặt hướng về mắt (+Z)
+                if (-y2 > maxY) { maxY = -y2; mapped.U = f; } // Mặt hướng lên trời (-Y)
+                if (x2 > maxX) { maxX = x2; mapped.R = f; }   // Mặt hướng bên phải (+X)
+            }
+            return mapped;
+        }
+
+        function handleMove(logicalBtn, cw) {
+            if (isRotating || isSolving) return;
+            // Nhận diện mặt nào đang là U, R, F so với góc nhìn camera
+            const rel = getRelativeFaces(camY, camX);
+            const actualFace = rel[logicalBtn]; 
+            
+            moveHistory.push({ face: actualFace, cw: cw });
+            rotateLayer(actualFace, cw);
+        }
+
+        // Thực thi xoay layer với Animation 3D chân thực
+        function rotateLayer(face, cw, fromSolve = false) {
             isRotating = true;
-            if (!isSolving) moveHistory.push({ move, cw });
+            
+            let axis, value, rotateCSS;
+            if(face === 'F') { axis = 'z'; value = 1; rotateCSS = cw ? 'rotateZ(90deg)' : 'rotateZ(-90deg)'; }
+            else if(face === 'B') { axis = 'z'; value = -1; rotateCSS = cw ? 'rotateZ(-90deg)' : 'rotateZ(90deg)'; }
+            else if(face === 'R') { axis = 'x'; value = 1; rotateCSS = cw ? 'rotateX(90deg)' : 'rotateX(-90deg)'; }
+            else if(face === 'L') { axis = 'x'; value = -1; rotateCSS = cw ? 'rotateX(-90deg)' : 'rotateX(90deg)'; }
+            else if(face === 'U') { axis = 'y'; value = -1; rotateCSS = cw ? 'rotateY(-90deg)' : 'rotateY(90deg)'; }
+            else if(face === 'D') { axis = 'y'; value = 1; rotateCSS = cw ? 'rotateY(90deg)' : 'rotateY(-90deg)'; }
 
-            cubeState[move] = rotFace(cubeState[move], cw);
-
-            if (move === 'U') {
-                let tmp = [cubeState.F[0][0], cubeState.F[0][1], cubeState.F[0][2]];
-                if(cw) {
-                    for(let i=0; i<3; i++) { cubeState.F[0][i] = cubeState.R[0][i]; cubeState.R[0][i] = cubeState.B[0][i]; cubeState.B[0][i] = cubeState.L[0][i]; cubeState.L[0][i] = tmp[i]; }
-                } else {
-                    for(let i=0; i<3; i++) { cubeState.F[0][i] = cubeState.L[0][i]; cubeState.L[0][i] = cubeState.B[0][i]; cubeState.B[0][i] = cubeState.R[0][i]; cubeState.R[0][i] = tmp[i]; }
-                }
-            } 
-            else if (move === 'R') {
-                let tmpF = [cubeState.F[0][2], cubeState.F[1][2], cubeState.F[2][2]];
-                if(cw) {
-                    for(let i=0; i<3; i++) {
-                        cubeState.F[i][2] = cubeState.D[i][2];
-                        cubeState.D[i][2] = cubeState.B[2-i][0];
-                        cubeState.B[2-i][0] = cubeState.U[i][2];
-                        cubeState.U[i][2] = tmpF[i];
-                    }
-                } else {
-                    for(let i=0; i<3; i++) {
-                        cubeState.F[i][2] = cubeState.U[i][2];
-                        cubeState.U[i][2] = cubeState.B[2-i][0];
-                        cubeState.B[2-i][0] = cubeState.D[i][2];
-                        cubeState.D[i][2] = tmpF[i];
-                    }
-                }
-            }
-            else if (move === 'F') {
-                let tmpU = [cubeState.U[2][0], cubeState.U[2][1], cubeState.U[2][2]];
-                if(cw) {
-                    for(let i=0; i<3; i++) {
-                        cubeState.U[2][i] = cubeState.L[2-i][2];
-                        cubeState.L[2-i][2] = cubeState.D[0][2-i];
-                        cubeState.D[0][2-i] = cubeState.R[i][0];
-                        cubeState.R[i][0] = tmpU[i];
-                    }
-                } else {
-                    for(let i=0; i<3; i++) {
-                        cubeState.U[2][i] = cubeState.R[i][0];
-                        cubeState.R[i][0] = cubeState.D[0][2-i];
-                        cubeState.D[0][2-i] = cubeState.L[2-i][2];
-                        cubeState.L[2-i][2] = tmpU[i];
-                    }
-                }
-            }
-
-            render();
-            setTimeout(() => { isRotating = false; }, 160);
+            // 1. Lọc ra 9 mảnh nhỏ thuộc layer cần xoay
+            let targetCubies = cubies.filter(c => c[axis] === value);
+            
+            // 2. Gom chúng vào 1 Pivot trung tâm để animation mượt
+            let pivot = document.createElement('div');
+            pivot.className = 'pivot';
+            rubik.appendChild(pivot);
+            
+            targetCubies.forEach(c => pivot.appendChild(c.el));
+            
+            // 3. Kích hoạt animation
+            pivot.getBoundingClientRect(); // Ép trình duyệt render frame trước
+            pivot.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1)';
+            pivot.style.transform = rotateCSS;
+            
+            // 4. Khi animation xong, đưa các khối ra lại khung chính & tính lại tọa độ
+            setTimeout(() => {
+                targetCubies.forEach(c => {
+                    // Cập nhật ma trận CSS thật
+                    c.transformStr = rotateCSS + ' ' + c.transformStr;
+                    c.el.style.transform = c.transformStr + ' ' + c.baseTranslate;
+                    rubik.appendChild(c.el);
+                    
+                    // Xoay trục logic để chuẩn bị cho những bước tiếp theo
+                    let nx = c.x, ny = c.y, nz = c.z;
+                    if(face === 'F') { if(cw){ nx = -c.y; ny = c.x; } else { nx = c.y; ny = -c.x; } }
+                    else if(face === 'B') { if(cw){ nx = c.y; ny = -c.x; } else { nx = -c.y; ny = c.x; } }
+                    else if(face === 'R') { if(cw){ ny = -c.z; nz = c.y; } else { ny = c.z; nz = -c.y; } }
+                    else if(face === 'L') { if(cw){ ny = c.z; nz = -c.y; } else { ny = -c.z; nz = c.y; } }
+                    else if(face === 'U') { if(cw){ nx = -c.z; nz = c.x; } else { nx = c.z; nz = -c.x; } }
+                    else if(face === 'D') { if(cw){ nx = c.z; nz = -c.x; } else { nx = -c.z; nz = c.x; } }
+                    c.x = nx; c.y = ny; c.z = nz;
+                });
+                
+                pivot.remove();
+                isRotating = false;
+            }, 300);
         }
 
         function autoSolve() {
             if (isRotating || moveHistory.length === 0) return;
+            isSolving = true;
             const last = moveHistory.pop();
-            rotateLayer(last.move, !last.cw, true);
-            setTimeout(autoSolve, 250);
+            // Undo lại chính nước đi đó bằng cách xoay ngược chiều
+            rotateLayer(last.face, !last.cw, true);
+            
+            setTimeout(() => {
+                if(moveHistory.length > 0) autoSolve();
+                else isSolving = false;
+            }, 350);
         }
 
-        // Camera control đồng bộ hệ trục không gian mẫu
-        let cube = document.getElementById('rubikCube'), isDown = false, x = 45, y = -25, px, py;
+        // Camera Drag/Touch System
+        let isDown = false, px, py;
         document.addEventListener('mousedown', e => { if(e.target.tagName !== 'BUTTON') { isDown = true; px = e.clientX; py = e.clientY; } });
         document.addEventListener('mousemove', e => {
             if(!isDown) return;
-            x += (e.clientX - px) * 0.5; y -= (e.clientY - py) * 0.5;
-            cube.style.transform = `rotateX(${y}deg) rotateY(${x}deg)`;
+            camX += (e.clientX - px) * 0.5; camY -= (e.clientY - py) * 0.5;
+            rubik.style.transform = `rotateX(${camY}deg) rotateY(${camX}deg)`;
             px = e.clientX; py = e.clientY;
         });
         document.addEventListener('mouseup', () => isDown = false);
@@ -196,12 +272,13 @@
         document.addEventListener('touchstart', e => { if(e.target.tagName !== 'BUTTON') { isDown = true; px = e.touches[0].clientX; py = e.touches[0].clientY; } });
         document.addEventListener('touchmove', e => {
             if(!isDown) return;
-            x += (e.touches[0].clientX - px) * 0.5; y -= (e.touches[0].clientY - py) * 0.5;
-            cube.style.transform = `rotateX(${y}deg) rotateY(${x}deg)`;
+            camX += (e.touches[0].clientX - px) * 0.5; camY -= (e.touches[0].clientY - py) * 0.5;
+            rubik.style.transform = `rotateX(${camY}deg) rotateY(${camX}deg)`;
             px = e.touches[0].clientX; py = e.touches[0].clientY;
         });
         document.addEventListener('touchend', () => isDown = false);
 
+        // Khởi tạo
         initCube();
     </script>
 </body>
